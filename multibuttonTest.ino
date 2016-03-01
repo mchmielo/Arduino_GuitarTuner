@@ -1,6 +1,6 @@
 #include <TimerOne.h>
 #include <LiquidCrystal.h>
-#include <util/delay.h>
+//#include <util/delay.h>
 #include "pitches.h"
 
 #define CONST 3.322038403
@@ -23,31 +23,31 @@ enum pins{
 };
 
 uint8_t clippingLED = A1;
-uint8_t lowSignalLED = 13;
+uint8_t lowSignalLED = A5;
 
 /*********************** ZMIENNE MENU ***************/
 
-volatile uint8_t timeToExpireLEFT = 0;		// czas pomiedzy zareagowaniem na przycisniecie przycisku w lewo
-volatile uint8_t timeToExpireMENU = 0;		// czas pomiedzy zareagowaniem na przycisniecie przycisku menu
-volatile uint8_t timeToExpireRIGHT = 0;		// czas pomiedzy zareagowaniem na przycisniecie przycisku w prawo
-volatile pins currPin = leftButton;			// zmienna okresla ktory kolejny przycisk bedzie multipleksowany
-volatile byte timeToHideMenu = 0;			// czas, po ktorym ukryte zostanie menu
-volatile uint8_t menuScreen = 0;			// numer obecnego ekranu menu
-volatile boolean menuChangeUpper = true;	// czy gorna linia wyswietlacza ma zostac zaktualizowana
-volatile boolean menuChangeLower = true;	// czy dolna lina ma zostac zaktualizowana
+uint8_t timeToExpireLEFT = 0;		// czas pomiedzy zareagowaniem na przycisniecie przycisku w lewo
+uint8_t timeToExpireMENU = 0;		// czas pomiedzy zareagowaniem na przycisniecie przycisku menu
+uint8_t timeToExpireRIGHT = 0;		// czas pomiedzy zareagowaniem na przycisniecie przycisku w prawo
+pins currPin = leftButton;			// zmienna okresla ktory kolejny przycisk bedzie multipleksowany
+byte timeToHideMenu = 0;			// czas, po ktorym ukryte zostanie menu
+uint8_t menuScreen = 0;			// numer obecnego ekranu menu
+boolean menuChangeUpper = true;	// czy gorna linia wyswietlacza ma zostac zaktualizowana
+boolean menuChangeLower = true;	// czy dolna lina ma zostac zaktualizowana
 
 /*********************** ZMIENNE METRONOMU ***************/
 
 int loudSpeaker = 9;						// pin glosnika
-volatile options prevOption = tuner;	// poprzednia wybrana opcja 
-volatile options currOption = tuner;	// terazniejsza opcja - od niej zalezy ktory ekran zostanie wlaczyony
+options prevOption = tuner;	// poprzednia wybrana opcja 
+options currOption = tuner;	// terazniejsza opcja - od niej zalezy ktory ekran zostanie wlaczyony
 										    // oraz  jaka akcja zostanie wykonana
-volatile int metroTempo = 120;				// tempo metronomu w BPM
+int metroTempo = 120;				// tempo metronomu w BPM
 int duration;								// ile milisekund ma brzmiec sygnal metronomu
 
 /*************** ZMIENNE STROJENIA DO DZWIEKU ***************/
 
-volatile int currNote = NOTE_A4;			// wybrany dzwiek w trybie strojenia do dzwieku
+int currNote = NOTE_A4;			// wybrany dzwiek w trybie strojenia do dzwieku
 
 /************** ZMIENNE POTRZEBNE DO STROIKA ****************/
 
@@ -74,8 +74,8 @@ int slope[10];				// tablica przechowujaca kolejne zbocza sygnalu
 unsigned int totalTimer;	// potrzebne do obliczenia okresu
 unsigned int period;		// zmienna przechowujaca okres sygnalu
 byte index = 0;				// obecny indeks w tablicy
-float frequency;			// terazniejszy odczyt czestotliwosci
-float prevFreq = 0;			// poprzedni odczyt czestotliwosci
+volatile float frequency = 0;			// terazniejszy odczyt czestotliwosci
+volatile float prevFreq = 0;			// poprzedni odczyt czestotliwosci
 int maxSlope = 0;			// maksymalna chwilowa wartosc sygnalu wejsciowego
 int newSlope;				// przechowywanie nadchodzacych zboczy sygnalu
 
@@ -113,22 +113,7 @@ void setup(){
   cli();//stop interrupts
 
   /******************* USTAWIENIE TIMER0 - MULTIPLEKSOWANIE PRZYCISKOW *********/
-  /*/
-  //set timer0 interrupt at 2kHz
-  TCCR0A = 0;// set entire TCCR0A register to 0
-  TCCR0B = 0;// same for TCCR0B
-  TCNT0 = 0;//initialize counter value to 0
-  // set compare match register for 2khz increments
-  OCR0A = 249;// = (16*10^6) / (250*256) - 1 (must be <256)
-  // turn on CTC mode
-  TCCR0A |= (1 << WGM01);
-  // Set CS01 and CS00 bits for 64 prescaler
-  TCCR0B |= (1 << CS02);
-  // enable timer compare interrupt
-  TIMSK0 |= (1 << OCIE0A);
- */
-
-  Timer1.initialize(40000);
+  Timer1.initialize(100000);
   Timer1.attachInterrupt(buttonsInterrupt);
 
   /***** PRZERWANIE ZEWNETRZNE GDY PRZYCISNIETY KTORYKOLWIEK PRZYCISK **********/
@@ -149,6 +134,29 @@ void setup(){
   ADCSRA |= (1 << ADIE); //enable interrupts when measurement complete
   ADCSRA |= (1 << ADEN); //enable ADC
   ADCSRA |= (1 << ADSC); //start ADC measurements
+  
+  /*
+  //Set Initial Timer value
+  TCNT0 = 0;
+  //Place TOP timer value to Output compare register
+  OCR0A = 99;
+  //Set CTC mode
+  //and make toggle PD6/OC0A pin on compare match
+  TCCR0A |= (1 << WGM01);
+
+  // Select Vref=AVcc
+  //and set left adjust result
+  ADMUX |= (1 << REFS0) | (1 << ADLAR);
+  //set prescaller to 32
+  //enable autotriggering
+  //enable ADC interupt
+  //and enable ADC
+  ADCSRA |= (1 << ADPS2) | (1 << ADPS0) | (1 << ADATE) | (1 << ADIE) | (1 << ADEN);
+  //set ADC trigger source - Timer0 compare match A
+  ADCSRB |= (1 << ADTS1) | (1 << ADTS0);
+
+  //select ADC channel with safety mask
+  ADMUX = (ADMUX & 0xF0) | (A0 & 0x0F);*/
 
   sei();//allow interrupts
 }
@@ -180,9 +188,6 @@ void buttonsInterrupt(){
 		break;
 	}
 }
-/*ISR(TIMER0_COMPA_vect){
-	buttonsInterrupt();
-}*/
 ISR(ADC_vect) {//when new ADC value ready
 	prevData = newData;//store previous value
 	newData = ADCH;//get value from A0
@@ -233,9 +238,15 @@ ISR(ADC_vect) {//when new ADC value ready
 			}
 		}
 	}
-	if (newData == 1023){	// if clipping
-		digitalWrite(clippingLED, HIGH);	// wlacz powiadomienie o przesterowaniu
-		clipping = 1;						// currently clipping
+	if (newData < 1023 && newData > 5){		// pomiar bez przesterowania
+		clipping = 0;
+		lowSignal = 0;
+	}
+	else{
+		if (newData == 1023)
+			clipping = 1;						// currently clipping
+		else
+			lowSignal = 1;
 	}
 
 	time++;//increment timer at rate of 38.5kHz
@@ -260,13 +271,13 @@ void reset(){				// reset zmiennych tunera
 
 void checkClipping(){		// 
 	if (clipping){			// if currently clipping
-		digitalWrite(clippingLED, LOW);	// wylacz powiadomienie o przesterowaniu
-		clipping = 0;
+		digitalWrite(clippingLED, HIGH);	// wylacz powiadomienie o przesterowaniu
 	}
+	else digitalWrite(clippingLED, LOW);
 	if (lowSignal){
-		digitalWrite(lowSignalLED, LOW);
-		lowSignal = 0;
+		digitalWrite(lowSignalLED, HIGH);
 	}
+	else digitalWrite(lowSignalLED, LOW);
 }
 
 void findNote(float freq){
@@ -332,6 +343,11 @@ void evalNoteBar(){
 			noteBar[pos + 9] = '#';
 		}
 	}
+	for (int i = 0; i < 16; ++i){
+		if (noteBar[i] != ' ' && !(noteBar[i] >= 65 && noteBar[i] < 73) && noteBar[i] != '#'){
+			noteBar[i] = ' ';
+		}
+	}
 }
 
 void buttonPressed(){
@@ -339,20 +355,20 @@ void buttonPressed(){
 		timeToHideMenu = 40;
 	if (digitalRead(A2) == LOW){
 		if (!timeToExpireLEFT){			// gdy nie bylo wcisnietego wczesniej przycisku
-			timeToExpireLEFT = 10;		// 300ms
+			timeToExpireLEFT = 3;		// 300ms
 			leftPressed();
 		}
 	}
 	else
 	if (digitalRead(A3) == LOW){
 		if (!timeToExpireMENU){			// gdy nie bylo wcisnietego wczesniej przycisku
-			timeToExpireMENU = 10;		// 300ms
+			timeToExpireMENU = 3;		// 300ms
 			menuPressed();
 		}
 	}
 	else if (digitalRead(A4) == LOW){
 		if (!timeToExpireRIGHT){			// gdy nie bylo wcisnietego wczesniej przycisku
-			timeToExpireRIGHT = 10;		// 300ms
+			timeToExpireRIGHT = 3;		// 300ms
 			rightPressed();
 		}
 	}
@@ -365,6 +381,7 @@ void menuPressed(){
 	case menu:        // gdy juz sie jest w menu - drugie wcisniecie menu to potwierdzenie
 		prevOption = currOption;
 		currOption = static_cast<options>(menuScreen);
+		timeToHideMenu = 0;
 		break;
 	default:          // wejscie do menu z kazdego innego ekranu
 		timeToHideMenu = 40;
@@ -416,7 +433,6 @@ void rightPressed(){
 			currNote++;
 		break;
 	case menu:
-		
 		if (menuScreen < 2){
 			menuChangeUpper = true;
 			menuScreen++;
@@ -454,16 +470,18 @@ void metronom(){
 	}
 	if (menuChangeLower){
 		lcd.setCursor(0, 1);
-		lcd.print("    ");
+		lcd.print("      ");
 		lcd.print(metroTempo);
-		lcd.print("    ");
+                if(metroTempo <= 99)
+		    lcd.print("        ");
+                else lcd.print("       ");
 	}
 	menuChangeUpper = false;
 	menuChangeLower = false;
 	Serial.println(duration);
 
 	tone(loudSpeaker, 98, duration);
-	_delay_ms(duration * 8);
+	delay(duration * 8);
 	noTone(loudSpeaker);
 
 }
@@ -480,18 +498,20 @@ void showMenu(){
 		
 		switch (menuScreen){
 		case tuner:
-			if (menuChangeUpper)
+			if (menuChangeUpper){
 				lcd.setCursor(0, 0);
 				lcd.print("  Strojenie   ->");
+			}
 			if (menuChangeLower){
 				lcd.setCursor(0, 1);
 				lcd.print("                ");
 			}
 			break;
 		case metronome:
-			if (menuChangeUpper)
+			if (menuChangeUpper){
 				lcd.setCursor(0, 0);
 				lcd.print("<-  Metronom  ->");
+			}
 			if (menuChangeLower){
 				lcd.setCursor(0, 1);
 				lcd.print("                ");
@@ -515,12 +535,20 @@ void tune(){
 	checkClipping();
 	if (checkMaxAmp>ampThreshold){
 		prevFreq = frequency;
-		frequency = 38462 / float(period);				//calculate frequency timer rate/period
+		frequency = (38462/2) / float(period);//calculate frequency timer rate/period
 		if (abs(prevFreq - frequency) <= freqTol){
 			counter++;
 		}
 		else
 			counter = 0;
+		Serial.print("Newdata= ");
+		Serial.print(newData);
+		Serial.print(", period= ");
+		Serial.print(period);
+		Serial.print(", index= ");
+		Serial.print(index);
+		Serial.print(", counter=");
+		Serial.println(counter);
 		if (counter >= 2){
 			period = 0;
 			counter = 0;
@@ -528,39 +556,50 @@ void tune(){
 			cents = 0;
 			findNote(frequency);
 			//print results
+			Serial.print(frequency);
+			Serial.println(" hz");
+			Serial.print(notesNames[note][0]);
+			Serial.print(notesNames[note][1]);
+			if (cents > 0)
+				Serial.print(" +");
+			Serial.println(cents);
 
 			lcd.setCursor(0, 0);
 			int amp = meanAmp / 16;
 			evalNoteBar();
-			lcd.setCursor(0, 0);
 			lcd.print(noteBar);
 			lcd.setCursor(0, 1);
 			lcd.print(notesNames[note][0]);
-			lcd.print(notesNames[note][1]);
+			if (notesNames[note][1] == '#')
+				lcd.print("#");
+			else lcd.print(" ");
 			if (cents > 0)
 				lcd.print(" +");
 			else
 				lcd.print(" ");
 			lcd.print(cents);
-			lcd.print("  ");
+			lcd.print("          ");
 		}
 	}
 	else{
+		Serial.print("newData= ");
+		Serial.println(newData);
 		lcd.setCursor(0, 0);
-		lcd.print("   MEGA stroik   ");
+		lcd.print("   MEGA stroik  ");
 		lcd.setCursor(0, 1);
 		lcd.print("                ");
+		Serial.println("MEGA stroik");
 	}
 }
 
 void loop(){
-	if (currOption != tuner){
+/*	if (currOption != tuner){
 		ADCSRA &= ~(1 << ADEN);
 	}
 	else{
-		ADCSRA |= (1 << ADEN);
+        ADCSRA |= (1 << ADEN);
 		ADCSRA |= (1 << ADSC); //start ADC measurements
-	}
+	}*/
 	if (currOption != sound)
 		noTone(loudSpeaker);
 	switch (currOption){
@@ -578,8 +617,11 @@ void loop(){
 		break;
 	}
 	if (currOption != metronome)
-		_delay_ms(100);
-	lcd.setCursor(9, 1);
-
-	lcd.setCursor(12, 1);
+		delay(200);
+	//lcd.setCursor(0, 1);
+	//lcd.print(prevFreq);
+	//lcd.setCursor(5, 1);
+	//lcd.print(frequency);
+	//lcd.setCursor(12, 1);
+	//lcd.print(period);
 }
